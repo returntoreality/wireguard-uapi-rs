@@ -47,7 +47,9 @@ impl RouteSocket {
 
         let mut result_names = vec![];
 
-        while let Some(Ok(response)) = iter.next() {
+        while let Some(response_result) = iter.next() {
+            let response = response_result?;
+
             match response.nl_type {
                 Nlmsg::Error => return Err(ListDevicesError::Unknown),
                 Nlmsg::Done => break,
