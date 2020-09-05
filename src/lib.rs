@@ -4,7 +4,7 @@ mod consts;
 pub mod err;
 pub mod get;
 mod interface;
-mod netlink;
+pub mod netlink;
 pub mod set;
 mod socket;
 
