@@ -8,14 +8,17 @@ use std::net::IpAddr;
 #[derive(Debug)]
 pub struct AllowedIp<'a> {
     pub ipaddr: &'a IpAddr,
-    pub cidr_mask: Option<u8>,
+    pub cidr_mask: u8,
 }
 
 impl<'a> AllowedIp<'a> {
     pub fn from_ipaddr(ipaddr: &'a IpAddr) -> Self {
         Self {
             ipaddr,
-            cidr_mask: None,
+            cidr_mask: match ipaddr {
+                IpAddr::V4(_) => 32,
+                IpAddr::V6(_) => 128,
+            },
         }
     }
 }
@@ -42,10 +45,7 @@ impl<'a> TryFrom<&AllowedIp<'a>> for Nlattr<NlaNested, Vec<u8>> {
         };
         nested.add_nested_attribute(&Nlattr::new(None, WgAllowedIpAttribute::IpAddr, ipaddr)?)?;
 
-        let cidr_mask = allowed_ip.cidr_mask.unwrap_or(match allowed_ip.ipaddr {
-            IpAddr::V4(_) => 32,
-            IpAddr::V6(_) => 128,
-        });
+        let cidr_mask = allowed_ip.cidr_mask;
         nested.add_nested_attribute(&Nlattr::new(
             None,
             WgAllowedIpAttribute::CidrMask,

@@ -24,7 +24,7 @@ fn create_set_allowed_ips(allowed_ips: &[get::AllowedIp]) -> Vec<set::AllowedIp>
         .iter()
         .map(|allowed_ip| set::AllowedIp {
             ipaddr: &allowed_ip.ipaddr,
-            cidr_mask: Some(allowed_ip.cidr_mask),
+            cidr_mask: allowed_ip.cidr_mask,
         })
         .collect()
 }
