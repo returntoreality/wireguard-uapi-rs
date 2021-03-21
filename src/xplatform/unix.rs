@@ -11,11 +11,11 @@ use std::path::Path;
 const GET_CMD: &str = "get=1\n\n";
 const SET_CMD: &str = "set=1\n";
 
-pub struct Client<P: AsRef<Path>> {
+pub struct UnixSocketClient<P: AsRef<Path>> {
     path: P,
 }
 
-impl<P: AsRef<Path>> Client<P> {
+impl<P: AsRef<Path>> UnixSocketClient<P> {
     /// A path to the unix socket file. Ex: `/var/run/wireguard/utun0.sock`
     pub fn create(path: P) -> Self {
         Self { path }

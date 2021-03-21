@@ -9,7 +9,7 @@ fn main() -> anyhow::Result<()> {
         .filter(|path| path.extension().map(|ext| ext == "sock").unwrap_or(false));
 
     for socket in sockets {
-        let client = wireguard_uapi::xplatform::Client::create(socket);
+        let client = wireguard_uapi::xplatform::UnixSocketClient::create(socket);
         let device = client.get()?;
         print_device(&device);
     }

@@ -18,10 +18,10 @@
 //! [wireguard.com/xplatform]: https://www.wireguard.com/xplatform
 //! [xplatform-interface]: https://www.wireguard.com/xplatform/#interface
 
-mod client;
 pub mod error;
 mod parser;
 mod protocol;
 pub mod set;
+mod unix;
 
-pub use client::Client;
+pub use unix::UnixSocketClient;
