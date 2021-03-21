@@ -78,7 +78,7 @@ mod tests {
 
         let private_key = curve25519_clamp(rand::random());
         client.set(set::Device {
-            private_key: Some(private_key),
+            private_key: Some(&private_key),
             ..Default::default()
         })?;
         let interface = client.get()?;
