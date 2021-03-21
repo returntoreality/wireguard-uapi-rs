@@ -117,6 +117,41 @@ impl<'a> Peer<'a> {
             allowed_ips: vec![],
         }
     }
+
+    pub fn remove(mut self, remove: Option<bool>) -> Self {
+        self.remove = remove;
+        self
+    }
+
+    pub fn update_only(mut self, update_only: Option<bool>) -> Self {
+        self.update_only = update_only;
+        self
+    }
+
+    pub fn preshared_key(mut self, preshared_key: &'a [u8; 32]) -> Self {
+        self.preshared_key = Some(preshared_key);
+        self
+    }
+
+    pub fn endpoint(mut self, endpoint: &'a SocketAddr) -> Self {
+        self.endpoint = Some(endpoint);
+        self
+    }
+
+    pub fn persistent_keepalive_interval(mut self, persistent_keepalive_interval: u16) -> Self {
+        self.persistent_keepalive_interval = Some(persistent_keepalive_interval);
+        self
+    }
+
+    pub fn replace_allowed_ips(mut self, replace_allowed_ips: Option<bool>) -> Self {
+        self.replace_allowed_ips = replace_allowed_ips;
+        self
+    }
+
+    pub fn allowed_ips(mut self, allowed_ips: Vec<AllowedIp<'a>>) -> Self {
+        self.allowed_ips = allowed_ips;
+        self
+    }
 }
 
 impl Display for Peer<'_> {

@@ -1,3 +1,6 @@
+use super::WGPEER_F_REMOVE_ME;
+use super::WGPEER_F_REPLACE_ALLOWEDIPS;
+use super::WGPEER_F_UPDATE_ONLY;
 use super::{AllowedIp, Device, Peer};
 use crate::linux::attr::NLA_F_NESTED;
 use crate::linux::attr::{NlaNested, WgDeviceAttribute, WgPeerAttribute};
@@ -135,16 +138,20 @@ impl IncubatingPeerFragment {
         let public_key = Nlattr::new(None, WgPeerAttribute::PublicKey, peer.public_key.to_vec())?;
         partial_peer.add_nested_attribute(&public_key)?;
 
-        if !peer.flags.is_empty() {
-            let mut unique = peer.flags.clone();
-            unique.dedup();
-
-            partial_peer.add_nested_attribute(&Nlattr::new(
-                None,
-                WgPeerAttribute::Flags,
-                unique.drain(..).map(|flag| flag as u32).sum::<u32>(),
-            )?)?;
-        }
+        let flags = {
+            let mut flags: u32 = 0;
+            if peer.remove.unwrap_or(false) {
+                flags += WGPEER_F_REMOVE_ME;
+            }
+            if peer.replace_allowed_ips.unwrap_or(false) {
+                flags += WGPEER_F_REPLACE_ALLOWEDIPS;
+            }
+            if peer.update_only.unwrap_or(false) {
+                flags += WGPEER_F_UPDATE_ONLY;
+            }
+            flags
+        };
+        partial_peer.add_nested_attribute(&Nlattr::new(None, WgPeerAttribute::Flags, flags)?)?;
 
         if let Some(preshared_key) = peer.preshared_key {
             partial_peer.add_nested_attribute(&Nlattr::new(
