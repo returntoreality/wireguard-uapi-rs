@@ -194,14 +194,6 @@ impl IncubatingPeerFragment {
             )?)?;
         }
 
-        if let Some(protocol_version) = peer.protocol_version {
-            partial_peer.add_nested_attribute(&Nlattr::new(
-                None,
-                WgPeerAttribute::ProtocolVersion,
-                protocol_version,
-            )?)?;
-        }
-
         // This covers all attributes except allowed ips. Avoid parsing allowed ips here
         // purposefully since they may not all fit into the current device message.
 
