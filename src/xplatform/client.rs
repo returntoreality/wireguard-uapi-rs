@@ -5,6 +5,6 @@ pub trait CrossPlatformWireGuardClient {
     type GetError;
     type SetError;
 
-    fn get(&self) -> Result<get::Device, Self::GetError>;
-    fn set(&self, set_request: set::Device) -> Result<(), Self::SetError>;
+    fn get(&mut self) -> Result<get::Device, Self::GetError>;
+    fn set(&mut self, set_request: set::Device) -> Result<(), Self::SetError>;
 }

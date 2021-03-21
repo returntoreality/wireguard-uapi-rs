@@ -59,7 +59,7 @@ mod tests {
     #[test]
     fn empty() -> anyhow::Result<()> {
         let socket = create_random_interface_for_testing()?;
-        let client = wireguard_uapi::xplatform::UnixSocketClient::create(socket);
+        let mut client = wireguard_uapi::xplatform::UnixSocketClient::create(socket);
 
         let interface = client.get()?;
         assert_eq!(interface.private_key, None);
@@ -71,7 +71,7 @@ mod tests {
         use wireguard_uapi::set;
 
         let socket = create_random_interface_for_testing()?;
-        let client = wireguard_uapi::xplatform::UnixSocketClient::create(socket);
+        let mut client = wireguard_uapi::xplatform::UnixSocketClient::create(socket);
 
         let interface = client.get()?;
         assert_eq!(interface.private_key, None);

@@ -27,7 +27,7 @@ impl<P: AsRef<Path>> CrossPlatformWireGuardClient for UnixSocketClient<P> {
     type GetError = GetDeviceError;
     type SetError = SetDeviceError;
 
-    fn get(&self) -> Result<get::Device, Self::GetError> {
+    fn get(&mut self) -> Result<get::Device, Self::GetError> {
         let mut stream = UnixStream::connect(&self.path)?;
 
         stream.write_all(GET_CMD.as_bytes())?;
@@ -38,7 +38,7 @@ impl<P: AsRef<Path>> CrossPlatformWireGuardClient for UnixSocketClient<P> {
         Ok(parse(response_lines)?)
     }
 
-    fn set(&self, set_request: set::Device) -> Result<(), Self::SetError> {
+    fn set(&mut self, set_request: set::Device) -> Result<(), Self::SetError> {
         let mut stream = UnixStream::connect(&self.path)?;
 
         stream.write_all(SET_CMD.as_bytes())?;
