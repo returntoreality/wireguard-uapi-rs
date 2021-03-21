@@ -22,6 +22,7 @@ pub mod client;
 pub mod error;
 mod parser;
 mod protocol;
+mod serialization;
 pub mod set;
 mod unix;
 
