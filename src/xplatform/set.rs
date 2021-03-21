@@ -162,6 +162,18 @@ pub struct AllowedIp<'a> {
     pub cidr_mask: u8,
 }
 
+impl<'a> AllowedIp<'a> {
+    pub fn from_ipaddr(ipaddr: &'a IpAddr) -> Self {
+        Self {
+            ipaddr,
+            cidr_mask: match ipaddr {
+                IpAddr::V4(_) => 32,
+                IpAddr::V6(_) => 128,
+            },
+        }
+    }
+}
+
 impl Display for AllowedIp<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(

@@ -5,23 +5,7 @@ use neli::nlattr::Nlattr;
 use std::convert::TryFrom;
 use std::net::IpAddr;
 
-#[derive(Debug)]
-pub struct AllowedIp<'a> {
-    pub ipaddr: &'a IpAddr,
-    pub cidr_mask: u8,
-}
-
-impl<'a> AllowedIp<'a> {
-    pub fn from_ipaddr(ipaddr: &'a IpAddr) -> Self {
-        Self {
-            ipaddr,
-            cidr_mask: match ipaddr {
-                IpAddr::V4(_) => 32,
-                IpAddr::V6(_) => 128,
-            },
-        }
-    }
-}
+pub type AllowedIp<'a> = crate::xplatform::set::AllowedIp<'a>;
 
 impl<'a> TryFrom<&AllowedIp<'a>> for Nlattr<NlaNested, Vec<u8>> {
     type Error = SerError;
