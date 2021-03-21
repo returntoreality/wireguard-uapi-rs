@@ -1,14 +1,16 @@
+use super::NetlinkDevice;
 use super::WGDEVICE_F_REPLACE_PEERS;
 use super::WGPEER_F_REMOVE_ME;
 use super::WGPEER_F_REPLACE_ALLOWEDIPS;
 use super::WGPEER_F_UPDATE_ONLY;
-use super::{AllowedIp, NetlinkDevice, Peer};
 use crate::linux::attr::NLA_F_NESTED;
 use crate::linux::attr::{NlaNested, WgDeviceAttribute, WgPeerAttribute};
 use crate::linux::cmd::WgCmd;
 use crate::linux::consts::WG_GENL_VERSION;
 use crate::linux::socket::NlWgMsgType;
 use crate::linux::DeviceInterface;
+use crate::set::AllowedIp;
+use crate::set::Peer;
 use neli::consts::NlmF;
 use neli::err::SerError;
 use neli::genl::Genlmsghdr;

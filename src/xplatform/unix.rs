@@ -1,9 +1,9 @@
 use crate::get;
+use crate::set;
 use crate::xplatform::client::CrossPlatformWireGuardClient;
 use crate::xplatform::error::GetDeviceError;
 use crate::xplatform::error::SetDeviceError;
 use crate::xplatform::parser::parse;
-use crate::xplatform::set;
 use std::io::BufRead;
 use std::io::Write;
 use std::os::unix::net::UnixStream;

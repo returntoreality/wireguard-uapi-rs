@@ -23,7 +23,6 @@ pub mod error;
 mod parser;
 mod protocol;
 mod serialization;
-pub mod set;
 mod unix;
 
 pub use unix::UnixSocketClient;

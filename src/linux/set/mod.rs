@@ -1,10 +1,6 @@
 mod allowed_ip;
-pub use allowed_ip::AllowedIp;
 mod device;
-pub use device::Device;
-pub use device::NetlinkDevice;
-mod peer;
-pub use peer::Peer;
+pub(crate) use device::NetlinkDevice;
 
 mod create_set_device_messages;
 pub(crate) use create_set_device_messages::create_set_device_messages;

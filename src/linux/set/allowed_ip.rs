@@ -1,11 +1,10 @@
 use crate::linux::attr::NLA_F_NESTED;
 use crate::linux::attr::{NlaNested, WgAllowedIpAttribute};
+use crate::set::AllowedIp;
 use neli::err::SerError;
 use neli::nlattr::Nlattr;
 use std::convert::TryFrom;
 use std::net::IpAddr;
-
-pub type AllowedIp<'a> = crate::xplatform::set::AllowedIp<'a>;
 
 impl<'a> TryFrom<&AllowedIp<'a>> for Nlattr<NlaNested, Vec<u8>> {
     type Error = SerError;

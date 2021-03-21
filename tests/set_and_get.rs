@@ -3,7 +3,8 @@ use {
     std::net::{IpAddr, Ipv6Addr},
     std::time::Duration,
     wireguard_uapi::get,
-    wireguard_uapi::linux::{set, DeviceInterface, RouteSocket, WgSocket},
+    wireguard_uapi::linux::{DeviceInterface, RouteSocket, WgSocket},
+    wireguard_uapi::set,
 };
 
 #[cfg(target_os = "linux")]

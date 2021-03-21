@@ -1,5 +1,5 @@
 use crate::get;
-use crate::xplatform::set;
+use crate::set;
 
 pub trait CrossPlatformWireGuardClient {
     type GetError;

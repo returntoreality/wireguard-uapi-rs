@@ -1,7 +1,7 @@
+use crate::set::AllowedIp;
+use crate::set::Device;
+use crate::set::Peer;
 use crate::xplatform::protocol::SetKey;
-use crate::xplatform::set::AllowedIp;
-use crate::xplatform::set::Device;
-use crate::xplatform::set::Peer;
 use std::fmt::Display;
 
 impl Display for Device<'_> {

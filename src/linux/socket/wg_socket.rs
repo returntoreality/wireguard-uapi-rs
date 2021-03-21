@@ -8,6 +8,7 @@ use crate::linux::set::create_set_device_messages;
 use crate::linux::socket::parse::*;
 use crate::linux::socket::NlWgMsgType;
 use crate::linux::DeviceInterface;
+use crate::set::Device;
 use libc::IFNAMSIZ;
 use neli::consts::{NlFamily, NlmF, Nlmsg};
 use neli::genl::Genlmsghdr;
@@ -117,7 +118,7 @@ impl WgSocket {
     pub fn set_device(
         &mut self,
         interface: DeviceInterface,
-        settings: crate::xplatform::set::Device,
+        settings: Device,
     ) -> Result<(), SetDeviceError> {
         let device = set::NetlinkDevice {
             interface,

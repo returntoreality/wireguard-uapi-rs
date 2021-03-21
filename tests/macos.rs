@@ -68,7 +68,7 @@ mod tests {
 
     #[test]
     fn simple() -> anyhow::Result<()> {
-        use wireguard_uapi::xplatform::set;
+        use wireguard_uapi::set;
 
         let socket = create_random_interface_for_testing()?;
         let client = wireguard_uapi::xplatform::UnixSocketClient::create(socket);
