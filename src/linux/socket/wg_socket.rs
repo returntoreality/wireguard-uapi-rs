@@ -114,7 +114,16 @@ impl WgSocket {
     /// ```sh
     ///  sudo ip -4 route add 127.3.1.1/32 dev wgtest0
     /// ```
-    pub fn set_device(&mut self, device: set::Device) -> Result<(), SetDeviceError> {
+    pub fn set_device(
+        &mut self,
+        interface: DeviceInterface,
+        settings: crate::xplatform::set::Device,
+    ) -> Result<(), SetDeviceError> {
+        let device = set::NetlinkDevice {
+            interface,
+            settings,
+        };
+
         for nl_message in create_set_device_messages(device, self.family_id)? {
             self.sock.send_nl(nl_message)?;
             self.sock.recv_ack()?;

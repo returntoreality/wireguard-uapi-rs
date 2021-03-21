@@ -1,7 +1,8 @@
+use super::WGDEVICE_F_REPLACE_PEERS;
 use super::WGPEER_F_REMOVE_ME;
 use super::WGPEER_F_REPLACE_ALLOWEDIPS;
 use super::WGPEER_F_UPDATE_ONLY;
-use super::{AllowedIp, Device, Peer};
+use super::{AllowedIp, NetlinkDevice, Peer};
 use crate::linux::attr::NLA_F_NESTED;
 use crate::linux::attr::{NlaNested, WgDeviceAttribute, WgPeerAttribute};
 use crate::linux::cmd::WgCmd;
@@ -33,7 +34,7 @@ struct IncubatingDeviceFragment {
 }
 
 impl IncubatingDeviceFragment {
-    fn split_off_peers(device: Device<'_>) -> Result<(Self, Vec<Peer<'_>>), SerError> {
+    fn split_off_peers(device: NetlinkDevice<'_>) -> Result<(Self, Vec<Peer<'_>>), SerError> {
         let incubating_device = IncubatingDeviceFragment {
             partial_device: {
                 let mut attrs = vec![];
@@ -41,18 +42,14 @@ impl IncubatingDeviceFragment {
                 let interface_attr = (&device.interface).try_into()?;
                 attrs.push(interface_attr);
 
-                if !device.flags.is_empty() {
-                    let mut unique = device.flags.clone();
-                    unique.dedup();
+                let flags: u32 = if device.settings.replace_peers.unwrap_or(false) {
+                    WGDEVICE_F_REPLACE_PEERS
+                } else {
+                    0
+                };
+                attrs.push(Nlattr::new(None, WgDeviceAttribute::Flags, flags)?);
 
-                    attrs.push(Nlattr::new(
-                        None,
-                        WgDeviceAttribute::Flags,
-                        unique.drain(..).map(|flag| flag as u32).sum::<u32>(),
-                    )?);
-                }
-
-                if let Some(private_key) = device.private_key {
+                if let Some(private_key) = device.settings.private_key {
                     attrs.push(Nlattr::new(
                         None,
                         WgDeviceAttribute::PrivateKey,
@@ -60,7 +57,7 @@ impl IncubatingDeviceFragment {
                     )?);
                 }
 
-                if let Some(listen_port) = device.listen_port {
+                if let Some(listen_port) = device.settings.listen_port {
                     attrs.push(Nlattr::new(
                         None,
                         WgDeviceAttribute::ListenPort,
@@ -68,7 +65,7 @@ impl IncubatingDeviceFragment {
                     )?);
                 }
 
-                if let Some(fwmark) = device.fwmark {
+                if let Some(fwmark) = device.settings.fwmark {
                     attrs.push(Nlattr::new(None, WgDeviceAttribute::Fwmark, fwmark)?);
                 }
 
@@ -80,7 +77,7 @@ impl IncubatingDeviceFragment {
             peers: Nlattr::new::<Vec<u8>>(None, WgDeviceAttribute::Peers | NLA_F_NESTED, vec![])?,
         };
 
-        Ok((incubating_device, device.peers))
+        Ok((incubating_device, device.settings.peers))
     }
 
     fn from_interface(interface: &DeviceInterface) -> Result<Self, SerError> {
@@ -245,7 +242,7 @@ impl IncubatingPeerFragment {
 }
 
 pub fn create_set_device_messages(
-    device: Device,
+    device: NetlinkDevice,
     family_id: NlWgMsgType,
 ) -> Result<Vec<NlWgMessage>, SerError> {
     let mut messages = vec![];

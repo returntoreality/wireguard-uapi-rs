@@ -30,6 +30,33 @@ pub struct Device<'a> {
     pub peers: Vec<Peer<'a>>,
 }
 
+impl<'a> Device<'a> {
+    pub fn private_key(mut self, private_key: &'a [u8; 32]) -> Self {
+        self.private_key = Some(private_key);
+        self
+    }
+
+    pub fn listen_port(mut self, listen_port: u16) -> Self {
+        self.listen_port = Some(listen_port);
+        self
+    }
+
+    pub fn fwmark(mut self, fwmark: u32) -> Self {
+        self.fwmark = Some(fwmark);
+        self
+    }
+
+    pub fn replace_peers(mut self, replace_peers: Option<bool>) -> Self {
+        self.replace_peers = replace_peers;
+        self
+    }
+
+    pub fn peers(mut self, peers: Vec<Peer<'a>>) -> Self {
+        self.peers = peers;
+        self
+    }
+}
+
 impl Display for Device<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(private_key) = self.private_key {

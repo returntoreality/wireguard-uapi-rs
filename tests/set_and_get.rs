@@ -97,10 +97,10 @@ fn simple() -> anyhow::Result<()> {
         println!("{}", test_device.ifname);
         route.add_device(&test_device.ifname)?;
 
-        let set_device_args = set::Device::from_ifname(&test_device.ifname)
+        let set_device_args = set::Device::default()
             .private_key(test_device.private_key.as_ref().unwrap())
             .listen_port(test_device.listen_port)
-            .flags(vec![set::WgDeviceF::ReplacePeers])
+            .replace_peers(Some(true))
             .peers(vec![
                 set::Peer::from_public_key(&test_device.peers[0].public_key)
                     .endpoint(test_device.peers[0].endpoint.as_ref().unwrap())
@@ -114,7 +114,10 @@ fn simple() -> anyhow::Result<()> {
                     .allowed_ips(create_set_allowed_ips(&test_device.peers[1].allowed_ips)),
             ]);
 
-        wg.set_device(set_device_args)?;
+        wg.set_device(
+            DeviceInterface::from_name(&test_device.ifname),
+            set_device_args,
+        )?;
         let response_device = wg.get_device(DeviceInterface::from_name(&test_device.ifname))?;
         route.del_device(&test_device.ifname)?;
 
@@ -141,8 +144,8 @@ fn set_ifname_has_proper_padding() -> anyhow::Result<()> {
         let mut route = RouteSocket::connect()?;
 
         route.add_device(&ifname)?;
-        let set_device_args = set::Device::from_ifname(&ifname).listen_port(listen_port);
-        wg.set_device(set_device_args)?;
+        let set_device_args = set::Device::default().listen_port(listen_port);
+        wg.set_device(DeviceInterface::from_name(&ifname), set_device_args)?;
         let response_device = wg.get_device(DeviceInterface::from_name(&ifname))?;
         route.del_device(&ifname)?;
         response_device
@@ -204,14 +207,17 @@ fn large_peer() -> anyhow::Result<()> {
                 .persistent_keepalive_interval(test_device.peers[0].persistent_keepalive_interval)
                 .allowed_ips(create_set_allowed_ips(&test_device.peers[0].allowed_ips));
 
-            set::Device::from_ifname(&test_device.ifname)
+            set::Device::default()
                 .private_key(test_device.private_key.as_ref().unwrap())
                 .listen_port(test_device.listen_port)
-                .flags(vec![set::WgDeviceF::ReplacePeers])
+                .replace_peers(Some(true))
                 .peers(vec![peer])
         };
 
-        wg.set_device(set_device_args)?;
+        wg.set_device(
+            DeviceInterface::from_name(&test_device.ifname),
+            set_device_args,
+        )?;
         let response_device = wg.get_device(DeviceInterface::from_name(&test_device.ifname))?;
         route.del_device(&test_device.ifname)?;
 
