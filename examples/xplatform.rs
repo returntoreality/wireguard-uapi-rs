@@ -1,5 +1,6 @@
 use colored::*;
 use wireguard_uapi::get::{AllowedIp, Device, Peer};
+use wireguard_uapi::xplatform::client::CrossPlatformWireGuardClient;
 
 fn main() -> anyhow::Result<()> {
     let sockets = std::fs::read_dir("/var/run/wireguard")?

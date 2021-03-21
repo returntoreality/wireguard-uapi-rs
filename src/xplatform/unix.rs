@@ -1,4 +1,5 @@
 use crate::get;
+use crate::xplatform::client::CrossPlatformWireGuardClient;
 use crate::xplatform::error::GetDeviceError;
 use crate::xplatform::error::SetDeviceError;
 use crate::xplatform::parser::parse;
@@ -20,8 +21,13 @@ impl<P: AsRef<Path>> UnixSocketClient<P> {
     pub fn create(path: P) -> Self {
         Self { path }
     }
+}
 
-    pub fn get(&self) -> Result<get::Device, GetDeviceError> {
+impl<P: AsRef<Path>> CrossPlatformWireGuardClient for UnixSocketClient<P> {
+    type GetError = GetDeviceError;
+    type SetError = SetDeviceError;
+
+    fn get(&self) -> Result<get::Device, Self::GetError> {
         let mut stream = UnixStream::connect(&self.path)?;
 
         stream.write_all(GET_CMD.as_bytes())?;
@@ -32,7 +38,7 @@ impl<P: AsRef<Path>> UnixSocketClient<P> {
         Ok(parse(response_lines)?)
     }
 
-    pub fn set(&self, set_request: set::Device) -> Result<(), SetDeviceError> {
+    fn set(&self, set_request: set::Device) -> Result<(), Self::SetError> {
         let mut stream = UnixStream::connect(&self.path)?;
 
         stream.write_all(SET_CMD.as_bytes())?;

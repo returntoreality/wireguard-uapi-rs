@@ -18,6 +18,7 @@
 //! [wireguard.com/xplatform]: https://www.wireguard.com/xplatform
 //! [xplatform-interface]: https://www.wireguard.com/xplatform/#interface
 
+pub mod client;
 pub mod error;
 mod parser;
 mod protocol;

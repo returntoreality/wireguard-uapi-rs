@@ -8,6 +8,7 @@ mod tests {
     use std::path::PathBuf;
     use std::process::Command;
     use tempfile::NamedTempFile;
+    use wireguard_uapi::xplatform::client::CrossPlatformWireGuardClient;
 
     const MACOS_WG_SOCK_DIR: &str = "/var/run/wireguard";
 
