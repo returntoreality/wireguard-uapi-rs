@@ -1,5 +1,5 @@
 use super::parse::parse_nla_nul_string;
-use crate::err::ListDevicesError;
+use crate::linux::err::ListDevicesError;
 use neli::consts::{Arphrd, Ifla, NlmF, Nlmsg, Rtm};
 use neli::nl::Nlmsghdr;
 use neli::rtnl::Ifinfomsg;

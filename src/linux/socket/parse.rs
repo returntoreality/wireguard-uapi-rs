@@ -1,7 +1,9 @@
-use crate::err::{ParseAttributeError, ParseDeviceError, ParseIpAddrError, ParseSockAddrError};
 use crate::get::{AllowedIp, AllowedIpBuilder, Device, DeviceBuilder, Peer, PeerBuilder};
 use crate::linux::attr::{
     NlaNested, WgAllowedIpAttribute, WgDeviceAttribute, WgPeerAttribute, NLA_TYPE_MASK,
+};
+use crate::linux::err::{
+    ParseAttributeError, ParseDeviceError, ParseIpAddrError, ParseSockAddrError,
 };
 use libc::{in6_addr, in_addr, AF_INET, AF_INET6};
 use neli::nlattr::AttrHandle;
