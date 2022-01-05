@@ -1,29 +1,31 @@
 use crate::err::{ParseAttributeError, ParseDeviceError, ParseIpAddrError, ParseSockAddrError};
 use crate::get::{AllowedIp, AllowedIpBuilder, Device, DeviceBuilder, Peer, PeerBuilder};
 use crate::linux::attr::{
-    NlaNested, WgAllowedIpAttribute, WgDeviceAttribute, WgPeerAttribute, NLA_TYPE_MASK,
+    WgAllowedIpAttribute, WgDeviceAttribute, WgPeerAttribute,
 };
 use libc::{in6_addr, in_addr, AF_INET, AF_INET6};
-use neli::nlattr::AttrHandle;
-use neli::nlattr::Nlattr;
+use neli::attr::{AttrHandle, Attribute};
+use neli::genl::Nlattr;
+use neli::types::{Buffer, GenlBuffer};
 use std::convert::TryFrom;
+use std::ffi::CString;
 use std::mem::size_of;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::time::Duration;
 
-pub fn parse_device(handle: AttrHandle<WgDeviceAttribute>) -> Result<Device, ParseDeviceError> {
+pub fn parse_device(handle: AttrHandle<GenlBuffer<WgDeviceAttribute, Buffer>, Nlattr<WgDeviceAttribute, Buffer>>) -> Result<Device, ParseDeviceError> {
     let mut device_builder = DeviceBuilder::default();
 
     for attr in handle.iter() {
-        match attr.nla_type.clone() & NLA_TYPE_MASK {
+        match attr.nla_type.nla_type.clone() {
             WgDeviceAttribute::Unspec => {
                 // The embeddable-wg-library example ignores unspec, so we'll do the same.
             }
             WgDeviceAttribute::Ifindex => {
-                device_builder.ifindex(parse_nla_u32(&attr.payload)?);
+                device_builder.ifindex(attr.get_payload_as::<u32>()?);
             }
             WgDeviceAttribute::Ifname => {
-                device_builder.ifname(parse_nla_nul_string(&attr.payload)?);
+                device_builder.ifname(attr.get_payload_as::<CString>()?.into_string()?);
             }
             WgDeviceAttribute::PrivateKey => {
                 device_builder.private_key(Some(parse_device_key(&attr.payload)?));
@@ -38,7 +40,7 @@ pub fn parse_device(handle: AttrHandle<WgDeviceAttribute>) -> Result<Device, Par
                 device_builder.fwmark(parse_nla_u32(&attr.payload)?);
             }
             WgDeviceAttribute::Peers => {
-                let handle = attr.get_nested_attributes::<NlaNested>()?;
+                let handle = attr.get_attr_handle()?.get_nested_attributes::<WgPeerAttribute>(WgDeviceAttribute::Peers)?;
                 device_builder.peers(parse_peers(handle)?);
             }
             WgDeviceAttribute::Flags => {
@@ -55,7 +57,7 @@ pub fn parse_device(handle: AttrHandle<WgDeviceAttribute>) -> Result<Device, Par
 
 pub fn extend_device(
     mut device: Device,
-    handle: AttrHandle<WgDeviceAttribute>,
+    handle: AttrHandle<GenlBuffer<WgDeviceAttribute, Buffer>, Nlattr<WgDeviceAttribute, Buffer>>,
 ) -> Result<Device, ParseDeviceError> {
     let next_peers = {
         let peers_attr = handle
@@ -92,7 +94,7 @@ pub fn extend_device(
     Ok(device)
 }
 
-pub fn parse_peers(handle: AttrHandle<NlaNested>) -> Result<Vec<Peer>, ParseDeviceError> {
+pub fn parse_peers(handle: AttrHandle<GenlBuffer<WgPeerAttribute, Buffer>, Nlattr<WgPeerAttribute, Buffer>>) -> Result<Vec<Peer>, ParseDeviceError> {
     let mut peers = vec![];
 
     for peer in handle.iter() {
@@ -104,7 +106,7 @@ pub fn parse_peers(handle: AttrHandle<NlaNested>) -> Result<Vec<Peer>, ParseDevi
 }
 
 pub fn parse_peer_builder(
-    handle: AttrHandle<WgPeerAttribute>,
+    handle: AttrHandle<GenlBuffer<WgPeerAttribute, Buffer>, Nlattr<WgPeerAttribute, Buffer>>,
 ) -> Result<PeerBuilder, ParseDeviceError> {
     let mut peer_builder = PeerBuilder::default();
 
@@ -149,12 +151,12 @@ pub fn parse_peer_builder(
     Ok(peer_builder)
 }
 
-pub fn parse_peer(handle: AttrHandle<WgPeerAttribute>) -> Result<Peer, ParseDeviceError> {
+pub fn parse_peer(handle: AttrHandle<GenlBuffer<WgPeerAttribute, Buffer>, Nlattr<WgPeerAttribute, Buffer>>) -> Result<Peer, ParseDeviceError> {
     let peer_builder = parse_peer_builder(handle)?;
     Ok(peer_builder.build()?)
 }
 
-pub fn parse_allowedips(handle: AttrHandle<NlaNested>) -> Result<Vec<AllowedIp>, ParseDeviceError> {
+pub fn parse_allowedips(handle: AttrHandle<GenlBuffer<WgAllowedIpAttribute, Buffer>, Nlattr<WgAllowedIpAttribute, Buffer>>) -> Result<Vec<AllowedIp>, ParseDeviceError> {
     let mut allowed_ips = vec![];
 
     for allowed_ip in handle.iter() {
@@ -166,13 +168,13 @@ pub fn parse_allowedips(handle: AttrHandle<NlaNested>) -> Result<Vec<AllowedIp>,
 }
 
 pub fn parse_allowedip(
-    handle: AttrHandle<WgAllowedIpAttribute>,
+    handle: AttrHandle<GenlBuffer<WgAllowedIpAttribute, Buffer>, Nlattr<WgAllowedIpAttribute, Buffer>>,
 ) -> Result<AllowedIp, ParseDeviceError> {
     let mut allowed_ip_builder = AllowedIpBuilder::default();
 
     for attr in handle.iter() {
-        let payload = &attr.payload;
-        match attr.nla_type {
+        let payload = attr.nla_payload.as_ref();
+        match attr.nla_type.nla_type {
             WgAllowedIpAttribute::Unspec => {}
             WgAllowedIpAttribute::Family => {
                 allowed_ip_builder.family(parse_nla_u16(payload)?);
@@ -338,8 +340,7 @@ mod tests {
     use anyhow::Error;
     use neli::err::DeError;
     use neli::genl::Genlmsghdr;
-    use neli::Nl;
-    use neli::StreamReadBuffer;
+    use neli::types::Buffer;
 
     // This device comes from the configuration example in "man wg", but with
     // the third peer removed since it specifies an domain endpoint only valid
@@ -412,7 +413,7 @@ mod tests {
     fn create_test_genlmsghdr(
         payload: &[u8],
     ) -> Result<Genlmsghdr<WgCmd, WgDeviceAttribute>, DeError> {
-        let mut mem = StreamReadBuffer::new(payload);
+        let mut mem = Buffer::from(payload);
         mem.set_size_hint(payload.size());
         Genlmsghdr::deserialize(&mut mem)
     }

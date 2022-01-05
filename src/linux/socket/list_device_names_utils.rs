@@ -1,15 +1,19 @@
 use super::parse::parse_nla_nul_string;
 use crate::err::ListDevicesError;
-use neli::consts::{Arphrd, Ifla, NlmF, Nlmsg, Rtm};
+use neli::consts::nl::NlmF;
+use neli::consts::nl::Nlmsg;
+use neli::consts::rtnl::Arphrd;
+use neli::consts::rtnl::Ifla;
+use neli::consts::rtnl::Rtm;
 use neli::nl::Nlmsghdr;
 use neli::rtnl::Ifinfomsg;
 use neli::rtnl::Rtattr;
-use neli::{Nl, StreamReadBuffer};
+use neli::types::RtBuffer;
 
-pub fn get_list_device_names_msg() -> Nlmsghdr<Rtm, Ifinfomsg<Ifla>> {
+pub fn get_list_device_names_msg() -> Nlmsghdr<Rtm, Ifinfomsg> {
     let infomsg = {
         let ifi_family =
-            neli::consts::rtnl::RtAddrFamily::UnrecognizedVariant(libc::AF_UNSPEC as u8);
+            neli::consts::rtnl::RtAddrFamily::UnrecognizedConst(libc::AF_UNSPEC as u8);
         // Arphrd::Netrom corresponds to 0. Not sure why 0 is necessary here but this is what the
         // embedded C library does.
         let ifi_type = Arphrd::Netrom;
@@ -34,7 +38,7 @@ pub struct PotentialWireGuardDeviceName {
 }
 
 pub fn parse_ifinfomsg(
-    response: Nlmsghdr<Nlmsg, Ifinfomsg<Ifla>>,
+    response: Nlmsghdr<Nlmsg, Ifinfomsg>,
 ) -> Result<PotentialWireGuardDeviceName, ListDevicesError> {
     let mut is_wireguard = false;
     let mut ifname: Option<String> = None;
@@ -42,7 +46,7 @@ pub fn parse_ifinfomsg(
     for attr in response.nl_payload.rtattrs {
         match attr.rta_type {
             Ifla::UnrecognizedVariant(libc::IFLA_LINKINFO) => {
-                let mut buf = StreamReadBuffer::new(&attr.rta_payload);
+                let mut buf = RtBuffer::from(&attr.rta_payload);
                 let linkinfo = Rtattr::<u16, Vec<u8>>::deserialize(&mut buf)?;
 
                 if linkinfo.rta_type == libc::IFLA_INFO_KIND {

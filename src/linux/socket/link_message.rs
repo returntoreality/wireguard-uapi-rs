@@ -1,13 +1,16 @@
+use std::iter::FromIterator;
+
 use crate::linux::consts::WG_GENL_NAME;
 use libc::{IFLA_INFO_KIND, IFLA_LINKINFO};
-use neli::consts::{Arphrd, Ifla, NlmF, Rtm};
+use neli::consts::nl::{NlmF, NlmFFlags};
+use neli::consts::rtnl::{Arphrd, IffFlags, Ifla, Rtm};
 use neli::err::SerError;
-use neli::nl::Nlmsghdr;
-use neli::nlattr::Nlattr;
+use neli::genl::Nlattr;
+use neli::nl::{NlPayload, Nlmsghdr};
 use neli::rtnl::Ifinfomsg;
 use neli::rtnl::Rtattr;
-use neli::Nl;
-use neli::StreamWriteBuffer;
+use neli::types::{Buffer, RtBuffer};
+use neli::attr::Attribute;
 
 const RTATTR_HEADER_LEN: libc::c_ushort = 4;
 
@@ -16,33 +19,24 @@ pub enum WireGuardDeviceLinkOperation {
     Delete,
 }
 
-fn create_rtattr(rta_type: Ifla, rta_payload: Vec<u8>) -> Rtattr<Ifla, Vec<u8>> {
-    let mut rtattr = Rtattr {
-        rta_len: 0,
-        rta_type,
-        rta_payload,
-    };
-    // neli doesn't provide a nice way to automatically set this for rtattr (it does for nlattr),
-    // so we'll do some small math ourselves.
-    rtattr.rta_len = rtattr.payload_size() as libc::c_ushort + RTATTR_HEADER_LEN;
-    rtattr
+fn create_rtattr(rta_type: Ifla, rta_payload: Vec<u8>) -> Rtattr<Ifla, Buffer> {
+    Rtattr::new(None, rta_type, rta_payload).unwrap()
 }
 
 pub fn link_message(
     ifname: &str,
     link_operation: WireGuardDeviceLinkOperation,
-) -> Result<Nlmsghdr<Rtm, Ifinfomsg<Ifla>>, SerError> {
+) -> Result<Nlmsghdr<Rtm, Ifinfomsg>, SerError> {
     let ifname = create_rtattr(Ifla::Ifname, ifname.as_bytes().to_vec());
 
     let link = {
-        let rta_type = Ifla::UnrecognizedVariant(IFLA_LINKINFO);
+        let rta_type = Ifla::UnrecognizedConst(IFLA_LINKINFO);
         let payload = {
             // The Rtattr struct doesn't have a add_nested_attribute field like Nlattr. To work
             // around this, we can create a Nlattr and manually serialize it to a byte vector.
-            let mut payload = StreamWriteBuffer::new_growable(None);
+            let mut payload = Buffer::new();
             let rtattr =
-                Nlattr::new::<Vec<u8>>(None, IFLA_INFO_KIND, WG_GENL_NAME.as_bytes().to_vec())?;
-            rtattr.serialize(&mut payload)?;
+                Nlattr::new::<Vec<u8>>(false, false, IFLA_INFO_KIND, WG_GENL_NAME.as_bytes().to_vec())?;
             payload.as_ref().to_vec()
         };
         create_rtattr(rta_type, payload)
@@ -50,14 +44,15 @@ pub fn link_message(
 
     let infomsg = {
         let ifi_family =
-            neli::consts::rtnl::RtAddrFamily::UnrecognizedVariant(libc::AF_UNSPEC as u8);
+            neli::consts::rtnl::RtAddrFamily::UnrecognizedConst(libc::AF_UNSPEC as u8);
         // Arphrd::Netrom corresponds to 0. Not sure why 0 is necessary here but this is what the
         // embedded C library does.
         let ifi_type = Arphrd::Netrom;
         let ifi_index = 0;
-        let ifi_flags = vec![];
-        let rtattrs = vec![ifname, link];
-        Ifinfomsg::new(ifi_family, ifi_type, ifi_index, ifi_flags, rtattrs)
+        let ifi_flags = IffFlags::empty();
+        let ifi_change = IffFlags::empty();
+        let rtattrs = RtBuffer::from_iter([ifname, link].into_iter());
+        Ifinfomsg::new(ifi_family, ifi_type, ifi_index, ifi_flags, ifi_change, rtattrs)
     };
 
     let nlmsg = {
@@ -68,13 +63,13 @@ pub fn link_message(
         };
         let flags = match link_operation {
             WireGuardDeviceLinkOperation::Add => {
-                vec![NlmF::Request, NlmF::Ack, NlmF::Create, NlmF::Excl]
+                NlmFFlags::new(&[NlmF::Request, NlmF::Ack, NlmF::Create, NlmF::Excl])
             }
-            WireGuardDeviceLinkOperation::Delete => vec![NlmF::Request, NlmF::Ack],
+            WireGuardDeviceLinkOperation::Delete =>NlmFFlags::new(&[NlmF::Request, NlmF::Ack]),
         };
         let seq = None;
         let pid = None;
-        let payload = infomsg;
+        let payload = NlPayload::Payload(infomsg);
         Nlmsghdr::new(len, nl_type, flags, seq, pid, payload)
     };
 

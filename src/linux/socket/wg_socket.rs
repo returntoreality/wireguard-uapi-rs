@@ -9,37 +9,30 @@ use crate::linux::socket::parse::*;
 use crate::linux::socket::NlWgMsgType;
 use crate::linux::DeviceInterface;
 use libc::IFNAMSIZ;
-use neli::consts::{NlFamily, NlmF, Nlmsg};
+use neli::attr::Attribute;
+use neli::consts::nl::{NlmF, NlmFFlags, Nlmsg};
+use neli::consts::socket::NlFamily;
+use neli::err::NlError;
 use neli::genl::Genlmsghdr;
-use neli::nl::Nlmsghdr;
-use neli::nlattr::Nlattr;
-use neli::socket::NlSocket;
-use neli::Nl;
-use neli::StreamWriteBuffer;
+use neli::nl::{NlPayload, Nlmsghdr};
+use neli::genl::Nlattr;
+use neli::socket::{NlSocket, NlSocketHandle};
+use neli::types::{Buffer, GenlBuffer};
 
 pub struct WgSocket {
-    sock: NlSocket,
+    sock: NlSocketHandle,
     family_id: NlWgMsgType,
 }
 
 impl WgSocket {
     pub fn connect() -> Result<Self, ConnectError> {
-        let family_id = {
-            NlSocket::new(NlFamily::Generic, true)?
-                .resolve_genl_family(WG_GENL_NAME)
-                .map_err(ConnectError::ResolveFamilyError)?
-        };
+        let socket = NlSocketHandle::new(NlFamily::Generic)?;
+        let family_id = socket.resolve_genl_family(WG_GENL_NAME)?;
 
-        let track_seq = true;
-        let mut wgsock = NlSocket::new(NlFamily::Generic, track_seq)?;
-
-        // Autoselect a PID
-        let pid = None;
-        let groups = None;
-        wgsock.bind(pid, groups)?;
+        socket.bind(None, &[]);
 
         Ok(Self {
-            sock: wgsock,
+            sock: socket,
             family_id,
         })
     }
@@ -48,41 +41,41 @@ impl WgSocket {
         &mut self,
         interface: DeviceInterface,
     ) -> Result<get::Device, GetDeviceError> {
-        let mut mem = StreamWriteBuffer::new_growable(None);
+        let mut mem = Buffer::new();
         let attr = match interface {
             DeviceInterface::Name(name) => {
                 Some(name.len())
                     .filter(|&len| 0 < len && len < IFNAMSIZ)
                     .ok_or(GetDeviceError::InvalidInterfaceName)?;
-                name.as_ref().serialize(&mut mem)?;
-                Nlattr::new(None, WgDeviceAttribute::Ifname, mem.as_ref())?
+                mem.extend_from_slice(&mem.as_ref());
+                Nlattr::new(false, true, WgDeviceAttribute::Ifname, mem.as_ref())?
             }
             DeviceInterface::Index(index) => {
-                index.serialize(&mut mem)?;
-                Nlattr::new(None, WgDeviceAttribute::Ifindex, mem.as_ref())?
+                mem.extend_from_slice(&index.to_be_bytes());
+                Nlattr::new(false, true, WgDeviceAttribute::Ifindex, mem.as_ref())?
             }
         };
         let genlhdr = {
             let cmd = WgCmd::GetDevice;
             let version = WG_GENL_VERSION;
-            let attrs = vec![attr];
-            Genlmsghdr::new(cmd, version, attrs)?
+            let attrs = GenlBuffer::from_iter([attr].into_iter());
+            Genlmsghdr::new(cmd, version, attrs)
         };
         let nlhdr = {
             let size = None;
             let nl_type = self.family_id;
-            let flags = vec![NlmF::Request, NlmF::Ack, NlmF::Dump];
+            let flags = NlmFFlags::new(&[NlmF::Request, NlmF::Ack, NlmF::Dump]);
             let seq = None;
             let pid = None;
             let payload = genlhdr;
-            Nlmsghdr::new(size, nl_type, flags, seq, pid, payload)
+            Nlmsghdr::new(size, nl_type, flags, seq, pid, NlPayload::Payload(payload))
         };
 
-        self.sock.send_nl(nlhdr)?;
+        self.sock.send(nlhdr)?;
 
         let mut iter = self
             .sock
-            .iter::<Nlmsg, Genlmsghdr<WgCmd, WgDeviceAttribute>>();
+            .iter::<Nlmsg, Genlmsghdr<WgCmd, WgDeviceAttribute>>(false);
 
         let mut device = None;
         while let Some(Ok(response)) = iter.next() {
@@ -92,7 +85,7 @@ impl WgSocket {
                 _ => (),
             };
 
-            let handle = response.nl_payload.get_attr_handle();
+            let handle = response.get_payload()?.get_attr_handle();
             device = Some(match device {
                 Some(device) => extend_device(device, handle)?,
                 None => parse_device(handle)?,
@@ -116,8 +109,8 @@ impl WgSocket {
     /// ```
     pub fn set_device(&mut self, device: set::Device) -> Result<(), SetDeviceError> {
         for nl_message in create_set_device_messages(device, self.family_id)? {
-            self.sock.send_nl(nl_message)?;
-            self.sock.recv_ack()?;
+            self.sock.send(nl_message)?;
+            self.sock.recv()?;
         }
 
         Ok(())
